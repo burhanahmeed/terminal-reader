@@ -1,74 +1,161 @@
-# terminal-reader
+# Terminal Reader 🚀
 
-## About This Repository
+A powerful command-line RAG (Retrieval-Augmented Generation) tool that lets you chat with any codebase directly from your terminal. Ask questions about functions, understand code structure, and get intelligent answers about your repositories.
 
-`terminal-reader` is a command-line tool designed to bring Retrieval-Augmented Generation (RAG) capabilities directly to your terminal, allowing you to **chat with the contents of a Git repository**.
-
-This project provides an interactive interface where you can ask questions about a specific codebase hosted on GitHub. It works by:
-1.  **Cloning** the specified GitHub repository locally.
-2.  **Processing** its files, breaking them down into smaller, manageable chunks.
-3.  **Indexing** these chunks for efficient retrieval.
-4.  Utilizing a Large Language Model (LLM) to answer your queries based on the retrieved code snippets from the repository.
-
-Think of it as having a knowledgeable assistant who understands your codebase, right in your terminal!
-
-## How to Get Started
-
-If you've opened this repository and want to give `terminal-reader` a try, follow these steps:
+## 🚀 Quick Start
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
+- **Go 1.22+** - [Download here](https://golang.org/dl/)
+- **Git** - [Download here](https://git-scm.com/downloads)
+- **Gemini API Key** - [Get one here](https://makersuite.google.com/app/apikey)
 
-*   **Go (1.22 or newer)**: The project is written in Go. You can download it from [golang.org](https://golang.org/dl/).
-*   **Git**: Required for cloning repositories. Download it from [git-scm.com](https://git-scm.com/downloads).
-*   **OpenAI API Key (or similar LLM provider)**: While not explicitly shown in the provided snippets, a RAG chatbot typically requires an external LLM. It's highly probable that this application uses an OpenAI-compatible API.
-    *   You'll need an API key from a service like OpenAI.
-    *   Set it as an environment variable, for example: `export OPENAI_API_KEY="sk-your_api_key_here"`
+### Installation
 
-### Steps to Run
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/burhanahmeed/terminal-reader.git
+   cd terminal-reader
+   ```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/YOUR_GITHUB_USER/terminal-reader.git
-    cd terminal-reader
-    ```
-    *(Replace `YOUR_GITHUB_USER` with the actual GitHub username/organization if this project is hosted publicly, otherwise use your local path or an appropriate placeholder).*
+2. **Install dependencies:**
+   ```bash
+   go mod tidy
+   ```
 
-2.  **Build the application:**
-    Navigate to the project root and build the `ragchat` executable.
-    ```bash
-    go build -o ragchat ./cmd/ragchat
-    ```
-    This will create an executable named `ragchat` in your current directory.
+3. **Set up your API key:**
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
+   
+   Or create a `.env` file:
+   ```bash
+   echo "GEMINI_API_KEY=your_gemini_api_key_here" > .env
+   ```
 
-3.  **Set your API key (if required):**
-    Ensure your LLM API key is set as an environment variable.
-    ```bash
-    export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    ```
-    *(Replace with your actual API key)*
+4. **Build and run:**
+   ```bash
+   go run cmd/ragchat/main.go --path /path/to/your/repo
+   ```
 
-4.  **Run the RAG Chat:**
-    Now you can run the application, providing the URL of the GitHub repository you want to chat with.
+## 📖 Usage
 
-    ```bash
-    ./ragchat --repo-url https://github.com/go-chi/chi
-    ```
-    *(Replace `https://github.com/go-chi/chi` with any public GitHub repository URL you wish to explore).*
+### Local Repository
+```bash
+go run cmd/ragchat/main.go --path ~/projects/my-awesome-project
+```
 
-    Once started, the application will clone the repository, process its files, and then present you with a prompt where you can type your questions about the codebase.
+### GitHub Repository
+```bash
+go run cmd/ragchat/main.go --github https://github.com/owner/repo
+```
 
-    **Example Interaction:**
-    ```
-    Cloning repository... Done.
-    Processing files... Done.
-    Welcome to RAG Chat! Type your questions about the repo. Type 'exit' or 'quit' to end.
+### Example Session
+```
+📦 Indexing repo: /path/to/repo
+✅ Repo indexed. Starting chat (type 'exit' to quit).
 
-    You: What is the purpose of the 'chi' router?
-    AI: The 'chi' router is a lightweight, idiomatic, and composable HTTP router for Go. It's designed for building modular and maintainable web services...
-    You: How do I define a new route?
-    AI: You can define a new route using methods like `r.Get("/path", handlerFunc)`, `r.Post("/path", handlerFunc)`, etc., on your router instance 'r'...
-    You: exit
-    ```
-    To exit the chat session, simply type `exit` or `quit`.
+> What does the main function do?
+Thinking...
+The main function initializes the application by setting up the HTTP server, 
+configuring routes, and starting the listener on the specified port...
+
+> How does authentication work?
+Thinking...
+The authentication is handled by the AuthMiddleware function which validates 
+JWT tokens and extracts user information...
+
+> exit
+```
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Repository    │───▶│   File Loader    │───▶│    Chunker      │
+│   (Git/Local)   │    │                  │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Vector Store  │◀───│   Embedder       │◀───│   Chunks        │
+│   (SQLite)      │    │   (Gemini)       │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │
+         ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐
+│   Retriever     │    │   LLM Client     │
+│                 │    │   (Gemini)       │
+└─────────────────┘    └──────────────────┘
+         │                       │
+         └───────────┬───────────┘
+                     ▼
+            ┌─────────────────┐
+            │   Chat Session   │
+            │                 │
+            └─────────────────┘
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GEMINI_API_KEY` | Your Gemini API key | Yes |
+
+### Command Line Options
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--path` | Path to local repository | `--path ~/projects/repo` |
+| `--github` | GitHub repository URL | `--github https://github.com/user/repo` |
+
+## 🛠️ Development
+
+### Project Structure
+```
+terminal-reader/
+├── cmd/ragchat/          # Main application
+├── internal/
+│   ├── embed/           # Embedding functionality
+│   ├── llm/             # LLM client
+│   ├── repo/            # Repository handling
+│   ├── retriever/       # Vector storage & retrieval
+│   └── session/         # Chat session management
+├── pkg/cache/           # Caching utilities
+└── data/                # Local data storage
+```
+
+### Building
+```bash
+# Build the binary
+go build -o ragchat cmd/ragchat/main.go
+
+# Run tests
+go test ./...
+
+# Run with race detection
+go run -race cmd/ragchat/main.go --path .
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Google Gemini](https://ai.google.dev/) for the embedding and LLM capabilities
+- [SQLite](https://sqlite.org/) for vector storage
+- The Go community for excellent tooling and libraries
+
+---
+
+**Made with ❤️ for developers who want to understand their code better**
