@@ -36,7 +36,7 @@ func AsyncEmbed(
 			}
 			vec, err := embedder.EmbedText(task.c.Content)
 			if err == nil {
-				store.Add(task.c.FilePath+"|"+task.c.Language+"|"+task.c.FuncName, vec)
+				store.Add(task.c.FilePath+"|"+task.c.Language+"|"+task.c.FuncName, vec, repoHash, task.c.FilePath, task.c.FuncName)
 				cacheLayer.Set(chunkKey, "done")
 			}
 			results <- struct{}{}

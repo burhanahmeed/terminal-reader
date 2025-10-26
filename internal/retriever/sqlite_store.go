@@ -24,15 +24,19 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	CREATE TABLE IF NOT EXISTS vectors (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		content TEXT,
-		vector TEXT
+		vector TEXT,
+		repo_id TEXT,
+		file_path TEXT,
+		func_name TEXT
 	);
+	CREATE INDEX IF NOT EXISTS idx_vectors_repo_id ON vectors (repo_id);
 	`)
 	return &SQLiteStore{db: db}, err
 }
 
-func (s *SQLiteStore) Add(content string, vector []float32) error {
+func (s *SQLiteStore) Add(content string, vector []float32, repoId, filePath, funcName string) error {
 	vecJSON, _ := json.Marshal(vector)
-	_, err := s.db.Exec(`INSERT INTO vectors (content, vector) VALUES (?, ?)`, content, string(vecJSON))
+	_, err := s.db.Exec(`INSERT INTO vectors (content, vector, repo_id, file_path, func_name) VALUES (?, ?, ?, ?, ?)`, content, string(vecJSON), repoId, filePath, funcName)
 	return err
 }
 
@@ -46,8 +50,8 @@ func cosineSim(a, b []float32) float64 {
 	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
-func (s *SQLiteStore) Search(vector []float32, topK int) ([]string, error) {
-	rows, err := s.db.Query(`SELECT content, vector FROM vectors`)
+func (s *SQLiteStore) Search(vector []float32, topK int, repoId string) ([]string, error) {
+	rows, err := s.db.Query(`SELECT content, vector FROM vectors WHERE repo_id = ?`, repoId)
 	if err != nil {
 		return nil, err
 	}

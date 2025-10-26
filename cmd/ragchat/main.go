@@ -100,7 +100,7 @@ func main() {
 		if err != nil {
 			return "Error embedding query: " + err.Error()
 		}
-		topDocs, err := store.Search(qVec, 5)
+		topDocs, err := store.Search(qVec, 5, repoHash)
 		if err != nil {
 			return "Error searching vectors: " + err.Error()
 		}
