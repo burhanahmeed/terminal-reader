@@ -79,23 +79,13 @@ func main() {
 	}
 
 	repoHash := hashKey(*repoPath)
+	var allChunks []repo.Chunk
 	for _, f := range files {
-		docKey := hashKey(repoHash, f.Path)
-		if _, ok := cacheLayer.Get(docKey); ok {
-			continue // already embedded
-		}
-		vec, err := embedder.EmbedText(f.Content)
-		if err != nil {
-			log.Printf("Failed to embed file %s: %v", f.Path, err)
-			continue
-		}
-		err = store.Add(f.Path+"|"+f.Language, vec)
-		if err != nil {
-			log.Printf("Failed to store vector for %s: %v", f.Path, err)
-			continue
-		}
-		cacheLayer.Set(docKey, "done")
+		chunk := repo.ChunkFile(f, 100)
+		allChunks = append(allChunks, chunk...)
 	}
+
+	embed.AsyncEmbed(embedder, store, cacheLayer, allChunks, repoHash, 3)
 
 	fmt.Println("✅ Repo indexed. Starting chat (type 'exit' to quit).")
 
@@ -122,10 +112,13 @@ func main() {
 			query,
 		)
 
+		fmt.Printf("Thinking...")
+
 		resp, err := llmClient.Generate(prompt)
 		if err != nil {
 			return "Error: " + err.Error()
 		}
+		fmt.Printf("\r")
 		cacheLayer.Set(qKey, resp)
 		return resp
 	})
