@@ -1,6 +1,8 @@
 package embed
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/burhanahmeed/terminal-reader/internal/repo"
@@ -16,30 +18,35 @@ func AsyncEmbed(
 	repoHash string,
 	concurrency int,
 ) {
-	type task struct {
-		c repo.Chunk
-	}
-
-	tasks := make([]task, len(chunks))
-	results := make(chan struct{}, len(chunks))
-
+	taskChan := make(chan repo.Chunk, len(chunks))
 	var wg sync.WaitGroup
 
 	worker := func() {
 		defer wg.Done()
-		for t := range tasks {
-			task := tasks[t]
-			chunkKey := repoHash + "|" + task.c.FilePath + "|" + task.c.FuncName
-			if _, ok := cacheLayer.Get(chunkKey); ok {
-				results <- struct{}{}
+		for chunk := range taskChan {
+			// Skip empty chunks
+			if strings.TrimSpace(chunk.Content) == "" {
 				continue
 			}
-			vec, err := embedder.EmbedText(task.c.Content)
-			if err == nil {
-				store.Add(task.c.FilePath+"|"+task.c.Language+"|"+task.c.FuncName, vec, repoHash, task.c.FilePath, task.c.FuncName)
-				cacheLayer.Set(chunkKey, "done")
+
+			chunkKey := repoHash + "|" + chunk.FilePath + "|" + chunk.FuncName
+			if _, ok := cacheLayer.Get(chunkKey); ok {
+				continue // already embedded
 			}
-			results <- struct{}{}
+
+			vec, err := embedder.EmbedText(chunk.Content)
+			if err != nil {
+				fmt.Printf("Failed to embed chunk from %s: %v\n", chunk.FilePath, err)
+				continue
+			}
+
+			err = store.Add(chunk.FilePath+"|"+chunk.Language+"|"+chunk.FuncName, vec, repoHash, chunk.FilePath, chunk.FuncName)
+			if err != nil {
+				fmt.Printf("Failed to store chunk from %s: %v\n", chunk.FilePath, err)
+				continue
+			}
+
+			cacheLayer.Set(chunkKey, "done")
 		}
 	}
 
@@ -49,9 +56,11 @@ func AsyncEmbed(
 		go worker()
 	}
 
-	// enqueue tasks
-	for _, ch := range chunks {
-		tasks = append(tasks, task{c: ch})
+	// send tasks to workers
+	for _, chunk := range chunks {
+		taskChan <- chunk
 	}
+	close(taskChan)
+
 	wg.Wait()
 }
