@@ -17,15 +17,7 @@ type Loader struct{}
 
 // supported file extensions
 var allowedExt = map[string]string{
-	".md":   "markdown",
-	".go":   "go",
-	".py":   "python",
-	".js":   "javascript",
-	".ts":   "typescript",
-	".json": "json",
-	".yaml": "yaml",
-	".yml":  "yaml",
-	".toml": "toml",
+	".md": "markdown",
 }
 
 func (l *Loader) LoadRepo(root string) ([]FileData, error) {
